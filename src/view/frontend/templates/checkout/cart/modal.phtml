@@ -1,0 +1,225 @@
+<?php
+/** @var \Hyva\MageplazaGiftWrap\Block\Checkout\Cart\Modal $block */
+$wraps = $block->getWraps();
+?>
+
+<div x-data="initMnmGiftWrapModal()"
+     @open-gift-wrap-modal.window="openWrapModal($event.detail);"
+     @private-content-loaded.window="receiveCustomerData($event.detail.data)"
+     class="hidden z-50 inset-0 bg-gray-900 bg-opacity-60 overflow-y-auto h-full w-full px-4"
+     :class="{'hidden': !open, 'fixed active': open}"
+>
+    <div class="relative top-40 mx-auto shadow-xl rounded-md bg-white max-w-md">
+        <div class="pl-4 pt-0 justify-between border-b text-left flex items-center">
+            <h3 class="text-lg font-semibold">Hediye Paketi Ekle</h3>
+            <h4 class="text-md"></h4>
+            <div class="flex justify-end p-2">
+                <button @click="closeWrapModal()" type="button"
+                        class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd"
+                              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                              clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="m-4 messages">
+            <template x-for="msg in messages">
+                <div :class="msg.type" class="message">
+                    <span x-html="msg.message" class="message-gift-wrap-modal"></span>
+                </div>
+            </template>
+        </div>
+        <div class="text-center p-6 grid gap2 grid-cols-1 md:grid-cols-2">
+            <template x-for="wrap in wraps">
+                <div class="text-left">
+                    <label x-bind:for="'wrap' + wrap.wrap_id">
+                        <img x-bind:src="wrap.image" class="w-64 cursor-pointer" />
+                        <div class="mt-2">
+                            <input x-effect="if(wrap.wrap_id == wrapData?.wrap_id) selectedWrap = wrap" @click="selectedWrap = wrap" :checked="wrap.wrap_id == wrapData?.wrap_id" x-bind:id="'wrap' + wrap.wrap_id"  x-bind:name="'wrap' + wrap.wrap_id" type="radio" x-bind:value="wrap.wrap_id">
+                            <span x-text="wrap.name"></span> <span class="font-semibold" x-text="hyva.formatPrice(wrap.amount)"></span>
+                        </div>
+                    </label>
+
+                    <div class="mt-2">
+                        <label>
+                            <input id="mnm-hyva-use-gift-message"
+                                   @change="toggleUseGiftMessage()"
+                                   :checked="wrapData?.use_gift_message === true" type="checkbox" value="1" />
+                            <span>Hediye Notu Ekle</span>
+                        </label>
+
+                        <textarea id="mnm-hyva-gift-message-text" class="mt-2 rounded-lg" maxlength="120" rows="5" :class="{'hidden': !!wrapData?.use_gift_message === false}" name="gift_message" x-text="wrapData?.gift_message"></textarea>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <div class="mt-6 p-6">
+            <div class="my-3 flex justify-end">
+                <button x-bind:disabled="!hasWrap()" type="button"
+                        @click="removeWrap()"
+                        class="btn btn-secondary text-xs py-1 px-2 px-2 py-1 mx-1"
+                        :class="{'hidden': !hasWrap()}"
+                >
+                    <span>Kaldır</span>
+                </button>
+                <button type="button" class="btn btn-primary text-xs py-1 px-2 px-2 py-1 mx-1" @click="updateWrap()">
+                    <span>Kaydet</span>
+                </button>
+                <button type="button" class="btn btn-secondary text-xs py-1 px-2 px-2 py-1 mx-1" @click="closeWrapModal()">
+                    <span>İptal</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function initMnmGiftWrapModal() {
+        return {
+            displayError: null,
+            messages: [],
+            selectedWrap: null,
+            giftMessageFee: <?= $block->getGiftMessageFee(); ?>,
+            cart: null,
+            customer: null,
+            open: false,
+            itemId: null,
+            item: null,
+            wrapData: [],
+            hasWrap() {
+                if (typeof this.wrapData?.wrap_id !== 'undefined' && this.itemId !== null && (typeof this.itemId === 'number' || this?.itemId === 'all_cart')) {
+                    return true;
+                }
+                return false;
+            },
+            setItemId(itemId) {
+                this.itemId = itemId;
+            },
+            setWrapData(data) {
+                this.wrapData = data;
+            },
+            wraps: <?= /* @noEscape */ $wraps ?>,
+            closeWrapModal() {
+                this.open = false;
+            },
+            toggleUseGiftMessage() {
+                this.wrapData['use_gift_message'] = document.getElementById('mnm-hyva-use-gift-message').checked;
+            },
+            openWrapModal(detail) {
+                this.messages = [];
+                this.setItemId(detail.itemId);
+                this.setWrapData(detail?.wrapData);
+                this.open = true;
+            },
+            receiveCustomerData(data) {
+                if (data.cart) {
+                    this.cart = data.cart;
+                }
+                if (data.customer) {
+                    this.customer = data.customer;
+                }
+            },
+            removeWrap() {
+                document.getElementById('mnm-hyva-use-gift-message').checked = false;
+                document.getElementById('mnm-hyva-gift-message-text').value = '';
+
+                const path = this.customer && this.customer.fullname
+                    ? '/V1/carts/mine/mpgiftwrap-update-wrap'
+                    : '/V1/guest-carts/' + this.cart.cartId + '/mpgiftwrap-update-wrap';
+
+                if (this.itemId !== null && typeof this.itemId === 'number' || this?.itemId === 'all_cart') {
+                    this.$dispatch('update-totals-start', {});
+                    fetch(BASE_URL + 'rest/' + CURRENT_STORE_CODE + path + '?form_key=' + hyva.getFormKey(), {
+                        method: 'post',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            itemId: this.itemId,
+                            wrap: false,
+                            postcard: false
+                        })
+                    })
+                        .then(response => response.json())
+                        .then(result => {
+                            this.selectedWrap = null;
+                            this.wrapData['wrap_id'] = 0;
+                            this.setWrapData({});
+                            this.closeWrapModal();
+                            this.$dispatch('update-totals', {data: result});
+                        })
+                        .catch(this.displayError)
+                        .finally(() => {
+                                this.$dispatch('update-totals-end', {});
+                            }
+                        );
+                }
+            },
+            updateWrap() {
+                if (this.selectedWrap !== null) {
+                    const path = this.customer && this.customer.fullname
+                        ? '/V1/carts/mine/mpgiftwrap-update-wrap'
+                        : '/V1/guest-carts/' + this.cart.cartId + '/mpgiftwrap-update-wrap';
+
+                    if ((this.itemId !== null && typeof this.itemId === 'number') || (this?.itemId === 'all_cart')) {
+                        this.$dispatch('update-totals-start', {});
+                        let wrap = {
+                            ...this.selectedWrap,
+                            use_gift_message: document.getElementById('mnm-hyva-use-gift-message').checked,
+                            gift_message: document.getElementById('mnm-hyva-gift-message-text').value,
+                            gift_message_fee: this.giftMessageFee
+                        };
+                        fetch(BASE_URL + 'rest/' + CURRENT_STORE_CODE + path + '?form_key=' + hyva.getFormKey(), {
+                            method: 'post',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({
+                                itemId: this.itemId,
+                                wrap: wrap,
+                                postcard: false
+                            })
+                        })
+                            .then(response => response.json())
+                            .then(result => {
+                                this.setWrapData(wrap);
+                                this.$dispatch('update-totals', {data: result});
+                                if(this?.itemId === 'all_cart') {
+                                    this.$dispatch('set-gift-wrap-data-all-cart', wrap);
+                                } else {
+                                    this.$dispatch('set-gift-wrap-data-'+this.itemId, wrap);
+                                }
+                                this.closeWrapModal();
+                            })
+                            .catch(this.displayError)
+                            .finally(() => {
+                                    this.$dispatch('update-totals-end', {});
+                                }
+                            );
+                    }
+                } else {
+                    this.messages = [];
+                    this.messages.push({'type': 'error', 'message': 'Hediye Paketi Seçimi Yapmalısınız!'});
+                }
+            },
+            displayError(error) {
+                if (error.name === 'AbortError') {
+                    console.log('Fetch aborted');
+                } else {
+                    console.error(error);
+                    typeof window.dispatchMessages !== "undefined" && window.dispatchMessages(
+                        [{
+                            type: "error",
+                            text: "<?= $escaper->escapeJs(__("Something went wrong. Please try again.")) ?>"
+                        }], 10000
+                    );
+                }
+            }
+        }
+    }
+</script>

@@ -1,0 +1,50 @@
+<?php
+/** @var \Hyva\MageplazaGiftWrap\Block\Checkout\Cart\Item $block */
+$giftWrapData = $block->getWrapData() ?? [];
+$giftWrapPostCardData = $block->getPostCardData() ?? [];
+
+
+if ($block->isDisabled()) {
+    return;
+}
+
+?>
+
+<div
+    x-data='initWrapData<?= $block->getItem()->getId(); ?>()'
+    @set-gift-wrap-data-<?= $block->getItem()->getId(); ?>.window="setWrapData($event.detail);"
+>
+    <div class="hidden item-additional-hyva w-full text-sm gap-2 flex grid grid-cols-1 bg-container p-3 rounded-xl border border-container-darker border-dashed"
+         :class="{'flex': wrapData?.wrap_id > 0, 'hidden': !wrapData?.wrap_id}"
+    >
+        <template x-if="wrapData.wrap_id > 0">
+            <div>
+                <div class="">
+                    <span>Paket: </span><span class="font-semibold whitespace-nowrap" x-text="wrapData.name + ' (' + hyva.formatPrice(parseFloat(wrapData.amount)) + ')'"></span>
+                </div>
+                <template x-if="wrapData.use_gift_message">
+                    <div class="">
+                        <span>Hediye Notu: </span><span class="font-semibold" x-text="wrapData.gift_message + ' (' + hyva.formatPrice(parseFloat(wrapData.gift_message_fee)) + ')'"></span>
+                    </div>
+                </template>
+                <button class="mt-3 btn btn-secondary text-xs py-1 px-2" @click.prevent.stop="$dispatch('open-gift-wrap-modal',{'itemId': itemId, 'wrapData': wrapData, 'item': item});">Düzenle</button>
+            </div>
+        </template>
+    </div>
+    <template x-if="!wrapData?.wrap_id">
+        <button class="mt-3 btn btn-secondary text-xs py-1 px-2" @click.prevent.stop="$dispatch('open-gift-wrap-modal',{'itemId': itemId, 'wrapData': wrapData, 'item': item});">Hediye Paketi Ekle</button>
+    </template>
+</div>
+
+<script>
+    function initWrapData<?= $block->getItem()->getId(); ?>() {
+        return {
+            wrapData: <?= /* @noEscape */ json_encode($giftWrapData); ?>,
+            setWrapData(data) {
+                this.wrapData = data;
+            },
+            itemId: <?= $block->getItem()->getId(); ?>,
+            item: <?= /* @noEscape */ json_encode($block->getItem()->getData()); ?>
+        }
+    }
+</script>

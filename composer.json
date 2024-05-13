@@ -1,0 +1,22 @@
+{
+    "name": "mnm/module-mageplaza-gift-wrap-hyva",
+    "description": "Mageplaza Gift Wrap - Hyva",
+    "type": "magento2-module",
+    "version": "0.0.4",
+    "require": {
+        "magento/framework": "*",
+        "hyva-themes/magento2-compat-module-fallback": "*",
+        "mageplaza/module-gift-wrap": ">=4.1.9"
+    },
+    "license": [
+        "proprietary"
+    ],
+    "autoload": {
+        "files": [
+            "src/registration.php"
+        ],
+        "psr-4": {
+            "Hyva\\MageplazaGiftWrap\\": "src"
+        }
+    }
+}
